@@ -1,0 +1,531 @@
+/// Low-level ddsl representation of LTC2686.
+/// 
+/// This is the low-level driver part of the LTC2686 DAC from AnalogDevices, expressed in device-driver's ddsl syntax.
+/// Fnctions in here are based on datasheet Rev. A of the IC and follow, whenever useful, the naming scheme in the datasheet.
+/// Registers and commands are ordered according analogous to Table 8 of the datasheet and are thus sorted by command number.
+device Ltc2686Ll{
+    command-address-type: u8,
+    register-address-type: u8,
+    default-access: RW,
+    default-byte-order: BE,
+
+    /// Channels addresses.
+    ///
+    /// Used to create the channel address for writing specific functions to individual channels.
+    enum Channel {
+        Ch0: 0x00,
+        Ch1: 0x02,
+        Ch2: 0x04,
+        Ch3: 0x06,
+        Ch4: 0x08,
+        Ch5: 0x0A,
+        Ch6: 0x0C,
+        Ch7: 0x0E,
+    },
+
+    /// Channel operations.
+    /// 
+    /// This block allows you to access the following channel settings:
+    /// Channel selection happens via the [`Channel`] enum.
+    ///
+    /// - `dac_code`: RW DAC code of a specific channel.
+    /// - `settings`: RW the settings of the channel.
+    /// - `offset_adjust`: RW the offset adjust value of the channel.
+    /// - `gain_adjust`: RW the gain adjust value of the channel.
+    /// - `dac_code_and_update`: Write a DAC code to the channel and update it command.
+    /// - `dac_code_and_update_all`: Write a DAC code to this channel and update all channels command. 
+    /// - `update`: Update this channel with the DAC code loaded into the input register.
+    block ChannelOp[Channel stride 1] {
+        address-offset: 0,
+
+        /// DAC Code
+        ///
+        /// Read/write the 16-bit DAC code into the DAC input register.
+        /// When writing, the offset and gain adjusted value will be written.
+        /// Not that this command does not update the channel, it only acts 
+        /// on the input register.
+        /// If you want to write and update the DAC code of a specific channel,
+        /// see the `dac_code_and_update` write-only register.
+        ///
+        /// When reading this register, the offset and gain adjusted value 
+        /// will be returned.
+        register channel_dac_code {
+            address: 0x00,
+
+            fields: fieldset _ {
+                size-bytes: 2,
+                bit-overlap: allow,
+
+                /// Use this field for the 16bit version of the LTC2686.
+                field code_16bit 15:0,
+                /// Use this field for the 12bit version of the LTC2686.
+                field code_12bit 15:4,
+            }
+        },
+
+        /// Channel settings.
+        ///
+        /// Read/write the channel settings. These settings include:
+        /// - [`Mode`]: Is the channel set to toggle or dither mode (default: `Mode::Toggle`)
+        /// - [`DitherPhase`]: Set the dither phase (defaults to 0°).
+        /// - [`DitherPeriod`]: Set the dither period (defaults to N=4).
+        /// - [`TdSelect`]: Select the toggle/clock signal for the toggle/dither setup.
+        /// - [`SpanSettings`]: Output span of the DAC channel.
+        register channel_settings {
+            address: 0x10,
+            fields: fieldset _ {
+                size-bytes: 2,
+
+                /// Select which mode the channel is set into.
+                field mode 11 -> _ as enum _ {
+                    /// Toggle mode.
+                    Toggle: default 0b0,
+                    /// Dither mode.
+                    Dither: 0b1,
+                },
+
+                /// Dither phase shift in degrees.
+                field dither_phase 10:9 -> _ as enum _ {
+                    /// Phase shift of 0°.
+                    P0: default 0b00,
+                    /// Phase shift of 90°.
+                    P90: 0b01,
+                    /// Phase shift of 180°.
+                    P180: 0b10,
+                    /// Phase shift of 270°.
+                    P270: 0b11,
+                },
+
+                /// Dither period in number of clock cycles.
+                field dither_period 8:6 -> _ as enum _ {
+                    /// Total period of sinus is 4 clock cycles.
+                    N4: default 0b000,
+                    /// Total period of sinus is 8 clock cycles.
+                    N8: 0b001,
+                    /// Total period of sinus is 16 clock cycles.
+                    N16: 0b010,
+                    /// Total period of sinus is 32 clock cycles.
+                    N32: 0b011,
+                    /// Total period of sinus is 64 clock cycles.
+                    N64: 0b100,
+                },
+
+                /// Toggle/dither toggle/clock selection.
+                field td_select 5:4 -> _ as enum _ {
+                    /// Software toggle
+                    Software: default 0b00,
+                    /// Toggle/clock source on TGP pin 0.
+                    TgpPin0: 0b01,
+                    /// Toggle/clock source on TGP pin 1.
+                    TgpPin1: 0b10,
+                    /// Toggle/clock source on TGP pin 2.
+                    TgpPin2: 0b11,
+                },
+
+                /// Output span of the DAC channel.
+                field span_settings 3:0 -> _ as enum _ {
+                    /// Output span from 0V to 5V.
+                    Sp0To5: default 0b0000,
+                    /// Output span from 0V to 10V.
+                    Sp0To10: 0b0001,
+                    /// Output span from -5V to +5V.
+                    SpPm5: 0b0010,
+                    /// Output span from -10V to +10V.
+                    SpPm10: 0b0011,
+                    /// Output span from -15V to +15V.
+                    SpPm15: 0b0100,
+                    /// 5% overrange output span from 0 to 5.25V.
+                    OvrSp0To5: 0b1000,
+                    /// 5% overrange output span from 0V to 10.5V.
+                    OvrSp0To10: 0b1001,
+                    /// 5% overrange output span from -5.25V to +5.25V.
+                    OvrSpPm5: 0b1010,
+                    /// 5% overrange output span from -10.5V to +10.5V.
+                    OvrSpPm10: 0b1011,
+                    /// 5% overrange output span from -15.75V to +15.75V.
+                    OvrSpPm15: 0b1100,
+                },
+
+            }
+        },
+
+        /// Offset adjustment of channel.
+        /// 
+        /// Offset adjustment from -12.5% to +12.5% of the full scale (FS).
+        /// Resolution is 14-bit, which results in a LSB resolution of 15.3 ppm FS.
+        ///
+        /// NOTE: The datasheet RevA does not specify any difference here between the 16bit and the 12bit version.
+        /// This makes no sense, however, is right now implemented as specified in the datasheet. 
+        /// 12bit testing would be required.
+        register channel_offset_adjust {
+            address: 0x20,
+
+            fields: fieldset _ {
+                size-bytes: 2,
+                field offset_code 15:2,
+            },
+        },
+        
+        /// Gain adjustment of channel.
+        /// 
+        /// Gain adjustment of +-50% of value. The value we send here is the gain adjustment code.
+        /// See datasheet for details.
+        register channel_gain_adjust {
+            address: 0x30,
+
+            fields: fieldset _ {
+                size-bytes: 2,
+                field gain_code 15:0,
+            },
+        },
+
+        /// Write code to and update DAC channel.
+        /// 
+        /// Writes a specific code to the DAC channel and updates it, all in one command.
+        command channel_write_code_update {
+            address: 0x40,
+
+            fields-in: fieldset _ {
+                size-bytes: 2,
+                bit-overlap: allow,
+
+                /// Use this field for the 16bit version of the LTC2686.
+                field code_16bit 15:0,
+                /// Use this field for the 12bit version of the LTC2686.
+                field code_12bit 15:4,
+            }
+        },
+
+        /// Write code this channel and update all DAC channel.
+        /// 
+        /// Writes a specific code to this DAC channel and updates all DAC channels.
+        command channel_write_code_update_all {
+            address: 0x50,
+
+            fields-in: fieldset _ {
+                size-bytes: 2,
+                bit-overlap: allow,
+
+                /// Use this field for the 16bit version of the LTC2686.
+                field code_16bit 15:0,
+                /// Use this field for the 12bit version of the LTC2686.
+                field code_12bit 15:4,
+            }
+        },
+
+
+        /// Update DAC channel
+        ///
+        /// Writes the code that is stored in the DAC channel's input register
+        /// into the DAC register and thus sets the output.
+        command channel_update {
+            address: 0x60,
+
+            fields-in: 
+                /// Empty fieldset on purpose to reserve bytes to send in the interface.
+                fieldset _ {
+                    size-bytes: 2,
+
+                }
+        },
+    },
+
+    /// Configuration register of the LTC2686.
+    /// 
+    /// The configuration register holds the following bits:
+    ///
+    /// - [`SoftwareReset`]: Software reset of the LTC2686.
+    /// - [`ThermalShutdownProtection`]: Enable/disable thermal shutdown protection.
+    /// - [`ReferenceMode`]: Reference mode (external or internal).
+    /// - [`CrcCheck`]: Enable/disable CRC check of every command.
+    register configuration {
+        address: 0x70,
+
+        fields: fieldset _ {
+            size-bytes: 2,
+
+            /// Software reset of the chip.
+            ///
+            /// After writing, this bit clears itself to its default value. 
+            /// Thus, it will always read `NotReset`.
+            field software_reset 15 -> _ as enum _ {
+                /// No reset of the LTC2686.
+                NotReset: default 0b0,
+                /// Software reset the LTC2686. Only meaningful when writing.
+                Reset: 0b1,
+            },
+
+            /// Thermal shutdown protection.
+            /// 
+            /// Enables/disables the thermal shutdown protection of the chip.
+            field thermal_shutdown_protection 2 -> _ as enum _ {
+                /// Thermal shutdown protection is enabled (default).
+                Enabled: default 0b0,
+                /// Thermal shutdown protection is disabled.
+                Disabled: 0b1,
+            },
+
+            /// Reference mode.
+            /// 
+            /// Select if the internal voltage reference should be used or if the LTC2686 
+            /// should be put into external reference mode.
+            field reference_mode 1 -> _ as enum _ {
+                /// Use internal reference (default).
+                Internal: default 0b0,
+                /// Use an external reference (external reference mode).
+                External: 0b1,
+            },
+
+            /// CRC check.
+            ///
+            /// Enables/disables if every command should require a CRC check. This can be used in noisy environments.
+            ///
+            /// **Important:** Only configure this value via the interface, as it needs to track if a CRC checksum is required or not.
+            /// Do not configure the value directly.
+            field crc_check 0 -> _ as enum _ {
+                /// CRC checking is disabled (default).
+                Disabled: default 0b0,
+                /// CRC checking is enabled.
+                Enabled: 0b1,
+            },
+        }
+    },
+
+    /// Power down state of an individual channel.
+    enum PowerDownState {
+        /// The channel is active/not powered down (default).
+        Disabled: default 0b0,
+        /// The channel is powered down. 
+        Enabled: 0b1,
+    },
+
+    /// Power down register.
+    /// 
+    /// Use this to power down any combination of channels in order to preserve power.
+    /// We use the [`PowerDownState`] enum to track the status of every channel.
+    register power_down {
+        address: 0x71,
+
+        fields: fieldset _ {
+            size-bytes: 2,
+
+            field pd_ch0 0 -> _ as PowerDownState,
+            field pd_ch1 2 -> _ as PowerDownState,
+            field pd_ch2 4 -> _ as PowerDownState,
+            field pd_ch3 6 -> _ as PowerDownState,
+            field pd_ch4 8 -> _ as PowerDownState,
+            field pd_ch5 10 -> _ as PowerDownState,
+            field pd_ch6 12 -> _ as PowerDownState,
+            field pd_ch7 14 -> _ as PowerDownState,
+        },
+    },
+
+    /// Input register selection
+    enum InputRegister {
+        /// Input register A (default).
+        A: default 0b0,
+        /// Input register B.
+        B: 0b1,
+    },
+
+    /// Select the input register to write to.
+    ///
+    /// Input registers are selected with the [`InputRegister`] enum.
+    register input_register_select {
+        address: 0x72,
+
+        fields: fieldset _ {
+            size-bytes: 2,
+
+            field ab_ch0 0 -> _ as InputRegister,
+            field ab_ch1 2 -> _ as InputRegister,
+            field ab_ch2 4 -> _ as InputRegister,
+            field ab_ch3 6 -> _ as InputRegister,
+            field ab_ch4 8 -> _ as InputRegister,
+            field ab_ch5 10 -> _ as InputRegister,
+            field ab_ch6 12 -> _ as InputRegister,
+            field ab_ch7 14 -> _ as InputRegister,
+        },
+    },
+
+    /// Software toggle state of an individual channel.
+    enum SoftwareToggleState {
+        /// The software toggle is disabled (default).
+        Disabled: default 0b0,
+        /// The software toggle is enabled.
+        Enabled: 0b1,
+    },
+
+    /// Software toggle
+    /// 
+    /// Write the software toggle bit register. 
+    /// Note the the transition of a toggle bit is defined by the nCS/LD rising edge.
+    register software_toggle {
+        address: 0x73,
+
+        fields: fieldset _ {
+            size-bytes: 2,
+
+            field swt_ch0 0 -> _ as SoftwareToggleState,
+            field swt_ch1 2 -> _ as SoftwareToggleState,
+            field swt_ch2 4 -> _ as SoftwareToggleState,
+            field swt_ch3 6 -> _ as SoftwareToggleState,
+            field swt_ch4 8 -> _ as SoftwareToggleState,
+            field swt_ch5 10 -> _ as SoftwareToggleState,
+            field swt_ch6 12 -> _ as SoftwareToggleState,
+            field swt_ch7 14 -> _ as SoftwareToggleState,
+        },
+    },
+
+    /// State of the Toggle/Dither functionality.
+    enum ToggleDitherState {
+        /// The toggle/dither functionality is Disabled.
+        Disabled: default 0b0,
+        /// The toggle/dither functionality is enabled.
+        Enabled: 0b1,
+    },
+
+    /// Toggle/Dither functionality enable register.
+    register toggle_dither_enable {
+        address: 0x74,
+
+        fields: fieldset _ {
+            size-bytes: 2,
+
+            field tde_ch0 0 -> _ as ToggleDitherState,
+            field tde_ch1 2 -> _ as ToggleDitherState,
+            field tde_ch2 4 -> _ as ToggleDitherState,
+            field tde_ch3 6 -> _ as ToggleDitherState,
+            field tde_ch4 8 -> _ as ToggleDitherState,
+            field tde_ch5 10 -> _ as ToggleDitherState,
+            field tde_ch6 12 -> _ as ToggleDitherState,
+            field tde_ch7 14 -> _ as ToggleDitherState,
+        },
+    },
+
+    /// Analog MUX 
+    /// 
+    /// Controls the state and settings of the analog MUX.
+    register analog_mux {
+        address: 0x75,
+
+        fields: fieldset _ {
+            size-bytes: 2,
+
+            field mux_state 10 -> _ as
+                /// Analog MUX state
+                enum _ {
+                        /// Analog MUX is disabled (default).
+                        Disabled: default 0b0,
+                        /// Analog MUX is enabled.
+                        Enabled: 0b1,
+                    },
+
+            field mux_control 9:0 -> _ as 
+                /// Analog MUX control.
+                /// 
+                /// The reset (default) value (all zeros) is set to reading the voltage sense output of DAC0.
+                enum _ {
+                        /// DAC0 voltage output.
+                        Dac0Vout: 0b11_0000_0000,
+                        /// DAC1 voltage output.
+                        Dac1Vout: 0b11_0000_0010,
+                        /// DAC2 voltage output.
+                        Dac2Vout: 0b11_0000_0100,
+                        /// DAC3 voltage output.
+                        Dac3Vout: 0b11_0000_0110,
+                        /// DAC4 voltage output.
+                        Dac4Vout: 0b11_0000_1000,
+                        /// DAC5 voltage output.
+                        Dac5Vout: 0b11_0000_1010,
+                        /// DAC6 voltage output.
+                        Dac6Vout: 0b11_0000_1100,
+                        /// DAC7 voltage output.
+                        Dac7Vout: 0b11_0000_1110,
+                        /// DAC0 voltage sense output (default).
+                        Dac0Vsense: default 0b00_0000_0000,
+                        /// DAC1 voltage sense output.
+                        Dac1Vsense: 0b00_0000_0010,
+                        /// DAC2 voltage sense output.
+                        Dac2Vsense: 0b00_0000_0100,
+                        /// DAC3 voltage sense output.
+                        Dac3Vsense: 0b00_0000_0110,
+                        /// DAC4 voltage sense output.
+                        Dac4Vsense: 0b00_0000_1000,
+                        /// DAC5 voltage sense output.
+                        Dac5Vsense: 0b00_0000_1010,
+                        /// DAC6 voltage sense output.
+                        Dac6Vsense: 0b00_0000_1100,
+                        /// DAC7 voltage sense output.
+                        Dac7Vsense: 0b00_0000_1110,
+                        /// Reference low (REFL), pin 14.
+                        RefL: 0b10_0000_0000,
+                        /// Analog supply voltage Vcc.
+                        Vcc: 0b10_0001_0000, 
+                        /// Reference voltage Vref.
+                        Vref: 0b10_0010_0000,
+                        /// Voltage proportional to absolute temperature.
+                        Vptat: 0b10_0011_0000,
+                    },
+        },
+    },
+
+    /// Fault state for the three indicators.
+    enum FaultState {
+        /// All is good (default).
+        Ok: default 0b0,
+        /// A fault has occured.
+        Fault: 0b1,
+    },
+
+    /// Fault detection register.
+    /// 
+    /// The fault detection register is not automatically reset.
+    /// To reset it, write the [`FaultState::Ok`] to all fields.
+    /// This is different from the nFAULT pin, which is released on the next rising edge of nCS/LD.
+    register fault {
+        address: 0x76,
+
+        fields: fieldset _ {
+            size-bytes: 2,
+
+            /// Thermal shutdown fault.
+            field tsf 2 -> _ as FaultState,
+
+            /// Clock fault.
+            field ckf 1 -> _ as FaultState,
+
+            /// Command fault.
+            field cf 0 -> _ as FaultState,
+        },
+    },
+
+    /// Thermal shutdown state for each channel.
+    enum ThermalShutdownState {
+        /// The temperature is below the shutoff temperature, all is good (default).
+        Ok: default 0b0,
+        /// The temperature of the specific channel has exceeded 160°C and has shut down.
+        ShutDown: 0b1,
+    },
+
+    /// Thermal shutdown (read-only) register.
+    register thermal_shutdown {
+        address: 0x77,
+        access: RO,
+
+        fields: fieldset _ {
+            size-bytes: 2,
+            default-access: RO,
+
+            field tsd_ch0 0 -> _ as ThermalShutdownState,
+            field tsd_ch1 2 -> _ as ThermalShutdownState,
+            field tsd_ch2 4 -> _ as ThermalShutdownState,
+            field tsd_ch3 6 -> _ as ThermalShutdownState,
+            field tsd_ch4 8 -> _ as ThermalShutdownState,
+            field tsd_ch5 10 -> _ as ThermalShutdownState,
+            field tsd_ch6 12 -> _ as ThermalShutdownState,
+            field tsd_ch7 14 -> _ as ThermalShutdownState,
+        },
+    },
+
+}

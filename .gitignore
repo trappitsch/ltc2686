@@ -1,0 +1,53 @@
+# Rust
+/target/
+**/target/
+**/*.rs.bk
+
+# KiCad
+*.bak
+*.bck
+*.kicad_pcb-bak
+*.tmp
+*.sch-bak
+*.kicad_prl
+*.kicad_sch-bak
+*.dcm
+*.net
+*.xml
+*.csv
+*.zip
+*.pdf
+*.step
+*.stp
+*.wrl
+*.3dshapes/
+fp-info-cache
+sym-lib-table
+fp-lib-table
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+*.venv
+env/
+venv/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# VS Code
+.vscode/
+
+# General
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+*.log
+
+# jj
+.jj/
