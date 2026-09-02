@@ -30,6 +30,9 @@ All examples are listed in order of potential interest/complexity.
 - `ll_toggle.rs`: Runs the LTC2686 in (software) toggle mode.
 - `ll_dither.rs`: Runs the LTC2686 in (software) dither mode.
 - `ll_dither_ext.rs`*: Dither mode with external trigger for two channels.
+- `ll_crc.rs`: Configure the low-level driver to use CRC checks.
+  Note: This is only here as an example, it is NOT recommended
+  to do this from the low-level driver!
 
 Examples with a * have further details shown below.
 

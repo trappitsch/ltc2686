@@ -10,6 +10,12 @@ Driver completeness is completely ignored from this list for now!
 
 ### Very next steps
 
+- Work through naming of the low-level driver
+  - remove some of the `channel_` prefixes in channel ops
+- Is there a better way to set the registers for power down,
+  etc.?
+- Extend intro to docs of ll driver
+
 ### Notes to pass on to user
 
 - Offset adjustment for one channel seems to be wrong for 12bit version,
@@ -18,7 +24,8 @@ Driver completeness is completely ignored from this list for now!
 ### Down the road
 
 - How to support 12 bit version of driver (see below).
-- CRC checking: Driver implements it but there's no way to send it yet.
+- Test performance and size of firmware using
+  my CRC calculation or `crc` crate.
 
 ## Notes
 
@@ -32,10 +39,46 @@ Driver completeness is completely ignored from this list for now!
 
 ### CRC
 
-The CRC is completely optional in write and read.
-It can be left out and only 3 bytes sent if it is not activated.
-In this case, it can also be sent and is just ignored.
-This is the case for read and write.
+The CRC is a standard 6 bit wide, polynomial `0x03` CRC-6.
+There no flipping (in or out), and no `xor_in` or `xor_out`
+
+**Important:** For the CRC-6 calculation, use the 24 bits
+from the first two three bytes
+and add the two "do not care" bits from the fourth byte.
+So the value to compute the CRC-6 for has a total length of 26 bit.
+
+**Note:** The value returned from the LTC2686
+will always contain all zeros in the last bit,
+and thus returned values cannot be CRC checked.
+
+#### CRC determination with Pico de Gallo
+
+Since my first attempts of calculating the CRC
+were never accepted by the LTC2686,
+I used Pico de Gallo to empirically determine CRC-6.
+A 6 bit CRC can run from `0x00` to `0x3f`.
+If the command is not accepted, the fault register
+will contain an adequate fault.
+Using Pico de Gallo, it is very straightforward
+to write a routine that will send a command with a CRC
+and then check if it was accepted or not.
+If it was accepted: great, we found the correct CRC
+and are done.
+If it is not accepted, reset the fault register,
+increment the CRC, and try again.
+With Pico de Gallo, this is very fast and easy to accomplish.
+
+Here are some CRCs that I found:
+
+| Data (3 bytes)   | Accepted CRC (6 bits) | Remarks    |
+| ---------------- | --------------------- | ---------- |
+| 0x00, 0x00, 0x00 | 0x00                  |            |
+| 0x00, 0x00, 0x43 | 0x00                  | Polynomial |
+| 0x40, 0x00, 0x00 | 0x33                  |            |
+| 0x40, 0x12, 0x34 | 0x16                  |            |
+| 0x40, 0x7F, 0x7F | 0x39                  |            |
+| 0x40, 0xAB, 0xCD | 0x29                  |            |
+| 0x40, 0xFF, 0xFF | 0x38                  |            |
 
 ### 12 bit implementation
 

@@ -9,7 +9,7 @@ use embedded_hal::{
     spi::{Operation, SpiDevice},
 };
 
-use crate::ll::InterfaceError;
+use crate::ll::{CrcCheck, InterfaceError, helpers::get_crc};
 
 pub struct LtcInterface<SPI, R, D>
 where
@@ -23,6 +23,8 @@ where
     reset_pin: R,
     /// A delay provider.
     delay: D,
+    /// CRC check state.
+    crc_check: CrcCheck,
 }
 
 impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> LtcInterface<SPI, R, D> {
@@ -45,7 +47,21 @@ impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> LtcInterface<SPI, R, D> {
             spi,
             reset_pin,
             delay,
+            crc_check: CrcCheck::Disabled,
         })
+    }
+
+    /// Set the CRC check to the interface.
+    ///
+    /// This enables the CRC check for the interface. If enabled, writing commands will calculate a
+    /// CRC and add it the message. Reading will read and evaluate the CRC from the device and, if
+    /// it does not match, raise an `InterfaceError::CrcError`.
+    ///
+    /// **Important:** This only sets the CRC check on the interface but not on the driver. If you
+    /// use this low-level method, you must ensure to set it on the LTC2686 yourself via the
+    /// low-level driver!
+    pub fn set_crc_check(&mut self, crc_check: CrcCheck) {
+        self.crc_check = crc_check;
     }
 
     /// Resets the LTC2686 by pulling the reset pin low.
@@ -87,8 +103,14 @@ impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> RegisterInterface for LtcInterfac
         data: &mut [u8],
         _metadata: &device_driver::FieldsetMetadata,
     ) -> Result<(), Self::Error> {
+        let crc = get_crc(&self.crc_check, address, data);
+
         self.spi
-            .transaction(&mut [Operation::Write(&[address]), Operation::Write(data)])
+            .transaction(&mut [
+                Operation::Write(&[address]),
+                Operation::Write(data),
+                Operation::Write(&[crc]),
+            ])
             .map_err(|_| Self::Error::CommunicationError)?;
 
         Ok(())
@@ -101,6 +123,7 @@ impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> RegisterInterface for LtcInterfac
         _metadata: &device_driver::FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         let address_read = address + 0x80;
+        let crc = get_crc(&self.crc_check, address_read, data);
 
         // buffers for returned address
         let mut address_answer = [0_u8];
@@ -110,6 +133,7 @@ impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> RegisterInterface for LtcInterfac
             .transaction(&mut [
                 Operation::Write(&[address_read]),
                 Operation::Write(&[0x00, 0x00]),
+                Operation::Write(&[crc]),
             ])
             .map_err(|_| Self::Error::CommunicationError)?;
 
@@ -131,9 +155,16 @@ impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> CommandInterface for LtcInterface
         _output: &mut [u8],
         _output_metadata: &device_driver::FieldsetMetadata,
     ) -> Result<(), Self::Error> {
+        let crc = get_crc(&self.crc_check, address, input);
+
         self.spi
-            .transaction(&mut [Operation::Write(&[address]), Operation::Write(input)])
+            .transaction(&mut [
+                Operation::Write(&[address]),
+                Operation::Write(input),
+                Operation::Write(&[crc]),
+            ])
             .map_err(|_| Self::Error::CommunicationError)?;
+
         Ok(())
     }
 }

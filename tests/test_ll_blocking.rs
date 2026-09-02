@@ -9,7 +9,7 @@ use embedded_hal_mock::{
         spi::{Mock as SpiMock, Transaction as SpiTransaction},
     },
 };
-use ltc2686::ll::{Channel, Ltc2686Ll, LtcInterface};
+use ltc2686::ll::{self, Channel, Ltc2686Ll, LtcInterface};
 
 type SpiTransactionType = Generic<SpiTransaction<u8>>;
 type PinTransactionType = Generic<PinTransaction>;
@@ -63,6 +63,31 @@ fn set_channel_0_dac_code_to_0xab_cd() {
         SpiTransaction::transaction_start(),
         SpiTransaction::write(0x00),                 // address
         SpiTransaction::write_vec(vec![0xAB, 0xCD]), // data
+        SpiTransaction::write(0x00),                 // address
+        SpiTransaction::transaction_end(),
+    ];
+    spi.update_expectations(&spi_expected);
+
+    ltc.channel_op(Channel::Ch0)
+        .channel_dac_code()
+        .write(|reg| reg.set_code_16_bit(0xABCD))
+        .unwrap();
+
+    spi.done();
+    delay.done();
+    reset_pin.done();
+}
+
+#[test]
+fn set_channel_0_dac_code_to_0xab_cd_with_crc() {
+    let (mut ltc, mut spi, mut reset_pin, mut delay) = get_new_ltc2686_blocking();
+    ltc.interface().set_crc_check(ll::CrcCheck::Enabled);
+
+    let spi_expected = [
+        SpiTransaction::transaction_start(),
+        SpiTransaction::write(0x00),                 // address
+        SpiTransaction::write_vec(vec![0xAB, 0xCD]), // data
+        SpiTransaction::write(0x1A),                 // address
         SpiTransaction::transaction_end(),
     ];
     spi.update_expectations(&spi_expected);
@@ -85,6 +110,38 @@ fn get_channel_0_dac_code_0xab_cd() {
         SpiTransaction::transaction_start(),
         SpiTransaction::write(0x80),                 // address
         SpiTransaction::write_vec(vec![0x00, 0x00]), // does not matter
+        SpiTransaction::write(0x00),                 // address
+        SpiTransaction::transaction_end(),
+        SpiTransaction::transaction_start(),
+        SpiTransaction::read(0x80), // TEST: Not sure on address
+        SpiTransaction::read_vec(vec![0xAB, 0xCD]), // data
+        SpiTransaction::transaction_end(),
+    ];
+    spi.update_expectations(&spi_expected);
+
+    let ch0_dac_code = ltc
+        .channel_op(Channel::Ch0)
+        .channel_dac_code()
+        .read()
+        .unwrap();
+
+    assert_eq!(ch0_dac_code.code_16_bit(), 0xAB_CD);
+
+    spi.done();
+    reset_pin.done();
+    delay.done();
+}
+
+#[test]
+fn get_channel_0_dac_code_0xab_cd_with_crc() {
+    let (mut ltc, mut spi, mut reset_pin, mut delay) = get_new_ltc2686_blocking();
+    ltc.interface().set_crc_check(ll::CrcCheck::Enabled);
+
+    let spi_expected = [
+        SpiTransaction::transaction_start(),
+        SpiTransaction::write(0x80),                 // address
+        SpiTransaction::write_vec(vec![0x00, 0x00]), // does not matter
+        SpiTransaction::write(0x25),                 // address
         SpiTransaction::transaction_end(),
         SpiTransaction::transaction_start(),
         SpiTransaction::read(0x80), // TEST: Not sure on address
@@ -114,6 +171,7 @@ fn update_channel_4_dac_output() {
         SpiTransaction::transaction_start(),
         SpiTransaction::write(0x68), // address
         SpiTransaction::write_vec(vec![0x00, 0x00]),
+        SpiTransaction::write(0x00), // address
         SpiTransaction::transaction_end(),
     ];
     spi.update_expectations(&spi_expected);

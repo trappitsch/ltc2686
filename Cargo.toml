@@ -7,6 +7,8 @@ description = "An embedded-hal driver for the AnalogDevices LT2686 DAC."
 license = "MIT OR Apache-2.0"
 categories = ["embedded", "no-std", "hardware-support"]
 keywords = ["embedded-hal", "driver", "device-driver"]
+repository = "https://github.com/trappitsch/ltc2686"
+readme = "README.md"
 
 [dependencies]
 device-driver = { version = "2.1.0", features = ["macros"] }
@@ -18,6 +20,7 @@ defmt = { version = "1.0", optional = true }
 [dev-dependencies]
 embedded-hal-mock = { version = "0.11.1", features = ["embedded-hal-async"] }
 pico-de-gallo-hal = "0.7"
+rstest = "0.26.1"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 
 [features]
@@ -25,6 +28,10 @@ async = ["embedded-hal-async"]
 default = ["async"]
 blocking = []
 defmt = ["dep:defmt", "device-driver/defmt"]
+
+[[example]]
+name = "ll_crc"
+required-features = ["async"]
 
 [[example]]
 name = "ll_dither"
