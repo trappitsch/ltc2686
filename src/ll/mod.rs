@@ -9,6 +9,8 @@
 //! To get an overview of what is possible with the low-level driver,
 //! start with the [`Ltc2686Ll`] and branch out from there.
 
+pub use impls::SpanRangeVolts;
+
 #[cfg(feature = "async")]
 pub use interface_async::LtcInterfaceAsync;
 #[cfg(feature = "blocking")]
@@ -21,6 +23,7 @@ mod interface_blocking;
 
 #[cfg(any(feature = "async", feature = "blocking"))]
 mod crc;
+mod impls;
 
 device_driver::compile!(
     manifest: "ltc2686_16bit.ddsl"

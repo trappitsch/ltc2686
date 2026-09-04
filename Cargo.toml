@@ -16,22 +16,27 @@ embedded-hal = "1.0"
 embedded-hal-async = { version = "1.0", optional = true }
 
 defmt = { version = "1.0", optional = true }
+libm = { version = "0.2.16", optional = true }
+measurements = { version = "0.11.1", optional = true }
 
 [dev-dependencies]
 embedded-hal-mock = { version = "0.11.1", features = ["embedded-hal-async"] }
 pico-de-gallo-hal = "0.7"
-rstest = "0.26.1"
+rstest = "0.27"
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 
 [features]
 async = ["embedded-hal-async"]
-default = ["async"]
 blocking = []
+default = ["async"]
 defmt = ["dep:defmt", "device-driver/defmt"]
+measurements = ["dep:measurements", "dep:libm"]
 
 [[example]]
 name = "ll_all_channels"
 required-features = ["async"]
+
+# Examples and their feature dependencies
 
 [[example]]
 name = "ll_bipolar"
@@ -60,6 +65,8 @@ required-features = ["async"]
 [[example]]
 name = "ll_toggle"
 required-features = ["async"]
+
+# Tests and their feature dependencies
 
 [[test]]
 name = "test_ll_async"
