@@ -9,11 +9,12 @@ use embedded_hal_mock::{
         spi::{Mock as SpiMock, Transaction as SpiTransaction},
     },
 };
-use ltc2686::ll::{self, Channel, Ltc2686Ll, LtcInterface};
+use ltc2686::ll::{self, Channel, Ltc2686Ll, LtcInterfaceBlocking};
 
 type SpiTransactionType = Generic<SpiTransaction<u8>>;
 type PinTransactionType = Generic<PinTransaction>;
-type Ltc2686Type = Ltc2686Ll<LtcInterface<SpiTransactionType, PinTransactionType, CheckedDelay>>;
+type Ltc2686Type =
+    Ltc2686Ll<LtcInterfaceBlocking<SpiTransactionType, PinTransactionType, CheckedDelay>>;
 
 fn get_new_ltc2686_blocking() -> (
     Ltc2686Type,
@@ -25,7 +26,8 @@ fn get_new_ltc2686_blocking() -> (
     let reset_pin = PinMock::new(&[PinTransaction::set(PinState::High)]);
     let delay = CheckedDelay::new(&[]);
 
-    let interface = LtcInterface::try_new(spi.clone(), reset_pin.clone(), delay.clone()).unwrap();
+    let interface =
+        LtcInterfaceBlocking::try_new(spi.clone(), reset_pin.clone(), delay.clone()).unwrap();
 
     (Ltc2686Ll::new(interface), spi, reset_pin, delay)
 }
@@ -69,7 +71,7 @@ fn set_channel_0_dac_code_to_0xab_cd() {
     spi.update_expectations(&spi_expected);
 
     ltc.channel_op(Channel::Ch0)
-        .channel_dac_code()
+        .dac_code()
         .write(|reg| reg.set_code_16_bit(0xABCD))
         .unwrap();
 
@@ -93,7 +95,7 @@ fn set_channel_0_dac_code_to_0xab_cd_with_crc() {
     spi.update_expectations(&spi_expected);
 
     ltc.channel_op(Channel::Ch0)
-        .channel_dac_code()
+        .dac_code()
         .write(|reg| reg.set_code_16_bit(0xABCD))
         .unwrap();
 
@@ -119,11 +121,7 @@ fn get_channel_0_dac_code_0xab_cd() {
     ];
     spi.update_expectations(&spi_expected);
 
-    let ch0_dac_code = ltc
-        .channel_op(Channel::Ch0)
-        .channel_dac_code()
-        .read()
-        .unwrap();
+    let ch0_dac_code = ltc.channel_op(Channel::Ch0).dac_code().read().unwrap();
 
     assert_eq!(ch0_dac_code.code_16_bit(), 0xAB_CD);
 
@@ -150,11 +148,7 @@ fn get_channel_0_dac_code_0xab_cd_with_crc() {
     ];
     spi.update_expectations(&spi_expected);
 
-    let ch0_dac_code = ltc
-        .channel_op(Channel::Ch0)
-        .channel_dac_code()
-        .read()
-        .unwrap();
+    let ch0_dac_code = ltc.channel_op(Channel::Ch0).dac_code().read().unwrap();
 
     assert_eq!(ch0_dac_code.code_16_bit(), 0xAB_CD);
 
@@ -177,7 +171,7 @@ fn update_channel_4_dac_output() {
     spi.update_expectations(&spi_expected);
 
     ltc.channel_op(Channel::Ch4)
-        .channel_update()
+        .update()
         .dispatch_in(|_| {})
         .unwrap();
 

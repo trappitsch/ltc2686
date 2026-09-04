@@ -71,7 +71,7 @@ async fn set_channel_0_dac_code_to_0xab_cd() {
     spi.update_expectations(&spi_expected);
 
     ltc.channel_op(Channel::Ch0)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(0xABCD))
         .await
         .unwrap();
@@ -96,7 +96,7 @@ async fn set_channel_0_dac_code_to_0xab_cd_with_crc() {
     spi.update_expectations(&spi_expected);
 
     ltc.channel_op(Channel::Ch0)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(0xABCD))
         .await
         .unwrap();
@@ -125,7 +125,7 @@ async fn get_channel_0_dac_code_0xab_cd() {
 
     let ch0_dac_code = ltc
         .channel_op(Channel::Ch0)
-        .channel_dac_code()
+        .dac_code()
         .read_async()
         .await
         .unwrap();
@@ -157,7 +157,7 @@ async fn get_channel_0_dac_code_0xab_cd_with_crc() {
 
     let ch0_dac_code = ltc
         .channel_op(Channel::Ch0)
-        .channel_dac_code()
+        .dac_code()
         .read_async()
         .await
         .unwrap();
@@ -183,7 +183,7 @@ async fn update_channel_4_dac_output() {
     spi.update_expectations(&spi_expected);
 
     ltc.channel_op(Channel::Ch4)
-        .channel_update()
+        .update()
         .dispatch_in_async(|_| {})
         .await
         .unwrap();

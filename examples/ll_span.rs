@@ -48,7 +48,7 @@ async fn main() {
 
     // Write full output (5V) to channel 0.
     ltc.channel_op(Channel::Ch0)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(0xFF_FF))
         .await
         .unwrap();
@@ -59,14 +59,14 @@ async fn main() {
 
     // Set up channel 1 with a voltage range (span) of 0 - 10V.
     ltc.channel_op(Channel::Ch1)
-        .channel_settings()
-        .write_async(|reg| reg.set_span_settings(ll::SpanSettings::Sp0To10))
+        .settings()
+        .write_async(|reg| reg.set_span(ll::Span::Unip10))
         .await
         .unwrap();
 
     // Write full output (10V) into channel 1 and update all DAC channels (will also set channel 0).
     ltc.channel_op(Channel::Ch1)
-        .channel_write_code_update_all()
+        .write_dac_code_update_all()
         .dispatch_in_async(|data| data.set_code_16_bit(0xFF_FF))
         .await
         .unwrap();

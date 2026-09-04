@@ -1,8 +1,10 @@
-/// Low-level ddsl representation of LTC2686.
+/// Low-level driver of Analog Devices LTC2686.
 /// 
-/// This is the low-level driver part of the LTC2686 DAC from AnalogDevices, expressed in device-driver's ddsl syntax.
-/// Fnctions in here are based on datasheet Rev. A of the IC and follow, whenever useful, the naming scheme in the datasheet.
-/// Registers and commands are ordered according analogous to Table 8 of the datasheet and are thus sorted by command number.
+/// This is the low-level driver for the LTC2686. It was built with [device-driver](https://device-driver.com). 
+/// All functionality is based on the ICs datasheet Rev. A and follows, whenever possible and useful, the naming scheme in the datasheet.
+///
+/// For example usage, see the `examples` folder in the repository. All examples starting with `ll` show
+/// how to use the low-level driver.
 device Ltc2686Ll{
     command-address-type: u8,
     register-address-type: u8,
@@ -23,18 +25,92 @@ device Ltc2686Ll{
         Ch7: 0x0E,
     },
 
+    fieldset Settings {
+        size-bytes: 2,
+
+        /// Select which mode the channel is set into.
+        field mode 11 -> _ as enum _ {
+            /// Toggle mode.
+            Toggle: default 0b0,
+            /// Dither mode.
+            Dither: 0b1,
+        },
+
+        /// Dither phase shift in degrees.
+        field dither_phase 10:9 -> _ as enum _ {
+            /// Phase shift of 0°.
+            p0: default 0b00,
+            /// phase shift of 90°.
+            p90: 0b01,
+            /// phase shift of 180°.
+            p180: 0b10,
+            /// phase shift of 270°.
+            p270: 0b11,
+        },
+
+        /// dither period in number of clock cycles.
+        field dither_period 8:6 -> _ as enum _ {
+            /// total period of sinus is 4 clock cycles.
+            n4: default 0b000,
+            /// total period of sinus is 8 clock cycles.
+            n8: 0b001,
+            /// total period of sinus is 16 clock cycles.
+            n16: 0b010,
+            /// total period of sinus is 32 clock cycles.
+            n32: 0b011,
+            /// total period of sinus is 64 clock cycles.
+            n64: 0b100,
+        },
+
+        /// toggle/dither toggle/clock selection.
+        field td_select 5:4 -> _ as enum _ {
+            /// software toggle
+            software: default 0b00,
+            /// toggle/clock source on tgp pin 0.
+            tgp_pin0: 0b01,
+            /// toggle/clock source on tgp pin 1.
+            tgp_pin1: 0b10,
+            /// toggle/clock source on tgp pin 2.
+            tgp_pin2: 0b11,
+        },
+
+        /// output span of the dac channel.
+        field span 3:0 -> _ as enum _ {
+            /// unipolar output span from 0v to 5v.
+            unip5: default 0b0000,
+            /// unipolar output span from 0v to 5v.
+            unip10: 0b0001,
+            /// bipolar output span from -5v to 5v.
+            bip5: 0b0010,
+            /// bipolar output span from -10v to +10v.
+            bip10: 0b0011,
+            /// bipolar output span from -15v to +15v.
+            bip15: 0b0100,
+            /// 5% overrange for unipolar output span from 0v to 5v.
+            ovr_unip5: 0b1000,
+            /// 5% overrange for unipolar output span from 0v to 5v.
+            ovr_unip10: 0b1001,
+            /// 5% overrange for bipolar output span from -5v to 5v.
+            ovr_bip5: 0b1010,
+            /// 5% overrange for bipolar output span from -10v to +10v.
+            ovr_bip10: 0b1011,
+            /// 5% overrange for bipolar output span from -15v to +15v.
+            ovr_bip15: 0b1100,
+        },
+    },
+
+
     /// Channel operations.
     /// 
     /// This block allows you to access the following channel settings:
-    /// Channel selection happens via the [`Channel`] enum.
     ///
-    /// - `dac_code`: RW DAC code of a specific channel.
-    /// - `settings`: RW the settings of the channel.
-    /// - `offset_adjust`: RW the offset adjust value of the channel.
-    /// - `gain_adjust`: RW the gain adjust value of the channel.
-    /// - `dac_code_and_update`: Write a DAC code to the channel and update it command.
-    /// - `dac_code_and_update_all`: Write a DAC code to this channel and update all channels command. 
-    /// - `update`: Update this channel with the DAC code loaded into the input register.
+    /// - [`ChannelOp::dac_code`]: RW DAC code of a specific channel.
+    /// - [`ChannelOp::settings`]: RW the settings of the channel.
+    /// - [`ChannelOp::offset_adjust`]: RW the offset adjust value of the channel.
+    /// - [`ChannelOp::gain_adjust`]: RW the gain adjust value of the channel.
+    /// - [`ChannelOp::write_dac_code_update`]: Write a DAC code to the channel and update it command.
+    /// - [`ChannelOp::write_dac_code_update_all`]: Write a DAC code to this channel and update all channels command. 
+    /// - [`ChannelOp::update`]: Update this channel with the DAC code loaded into the input register.
     block ChannelOp[Channel stride 1] {
         address-offset: 0,
 
@@ -49,7 +125,7 @@ device Ltc2686Ll{
         ///
         /// When reading this register, the offset and gain adjusted value 
         /// will be returned.
-        register channel_dac_code {
+        register dac_code {
             address: 0x00,
 
             fields: fieldset _ {
@@ -70,83 +146,10 @@ device Ltc2686Ll{
         /// - [`DitherPhase`]: Set the dither phase (defaults to 0°).
         /// - [`DitherPeriod`]: Set the dither period (defaults to N=4).
         /// - [`TdSelect`]: Select the toggle/clock signal for the toggle/dither setup.
-        /// - [`SpanSettings`]: Output span of the DAC channel.
-        register channel_settings {
+        /// - [`Span`]: Output span of the DAC channel.
+        register settings {
             address: 0x10,
-            fields: fieldset _ {
-                size-bytes: 2,
-
-                /// Select which mode the channel is set into.
-                field mode 11 -> _ as enum _ {
-                    /// Toggle mode.
-                    Toggle: default 0b0,
-                    /// Dither mode.
-                    Dither: 0b1,
-                },
-
-                /// Dither phase shift in degrees.
-                field dither_phase 10:9 -> _ as enum _ {
-                    /// Phase shift of 0°.
-                    P0: default 0b00,
-                    /// Phase shift of 90°.
-                    P90: 0b01,
-                    /// Phase shift of 180°.
-                    P180: 0b10,
-                    /// Phase shift of 270°.
-                    P270: 0b11,
-                },
-
-                /// Dither period in number of clock cycles.
-                field dither_period 8:6 -> _ as enum _ {
-                    /// Total period of sinus is 4 clock cycles.
-                    N4: default 0b000,
-                    /// Total period of sinus is 8 clock cycles.
-                    N8: 0b001,
-                    /// Total period of sinus is 16 clock cycles.
-                    N16: 0b010,
-                    /// Total period of sinus is 32 clock cycles.
-                    N32: 0b011,
-                    /// Total period of sinus is 64 clock cycles.
-                    N64: 0b100,
-                },
-
-                /// Toggle/dither toggle/clock selection.
-                field td_select 5:4 -> _ as enum _ {
-                    /// Software toggle
-                    Software: default 0b00,
-                    /// Toggle/clock source on TGP pin 0.
-                    TgpPin0: 0b01,
-                    /// Toggle/clock source on TGP pin 1.
-                    TgpPin1: 0b10,
-                    /// Toggle/clock source on TGP pin 2.
-                    TgpPin2: 0b11,
-                },
-
-                /// Output span of the DAC channel.
-                field span_settings 3:0 -> _ as enum _ {
-                    /// Output span from 0V to 5V.
-                    Sp0To5: default 0b0000,
-                    /// Output span from 0V to 10V.
-                    Sp0To10: 0b0001,
-                    /// Output span from -5V to +5V.
-                    SpPm5: 0b0010,
-                    /// Output span from -10V to +10V.
-                    SpPm10: 0b0011,
-                    /// Output span from -15V to +15V.
-                    SpPm15: 0b0100,
-                    /// 5% overrange output span from 0 to 5.25V.
-                    OvrSp0To5: 0b1000,
-                    /// 5% overrange output span from 0V to 10.5V.
-                    OvrSp0To10: 0b1001,
-                    /// 5% overrange output span from -5.25V to +5.25V.
-                    OvrSpPm5: 0b1010,
-                    /// 5% overrange output span from -10.5V to +10.5V.
-                    OvrSpPm10: 0b1011,
-                    /// 5% overrange output span from -15.75V to +15.75V.
-                    OvrSpPm15: 0b1100,
-                },
-
-            }
+            fields: Settings,
         },
 
         /// Offset adjustment of channel.
@@ -157,7 +160,7 @@ device Ltc2686Ll{
         /// NOTE: The datasheet RevA does not specify any difference here between the 16bit and the 12bit version.
         /// This makes no sense, however, is right now implemented as specified in the datasheet. 
         /// 12bit testing would be required.
-        register channel_offset_adjust {
+        register offset_adjust {
             address: 0x20,
 
             fields: fieldset _ {
@@ -170,7 +173,7 @@ device Ltc2686Ll{
         /// 
         /// Gain adjustment of +-50% of value. The value we send here is the gain adjustment code.
         /// See datasheet for details.
-        register channel_gain_adjust {
+        register gain_adjust {
             address: 0x30,
 
             fields: fieldset _ {
@@ -179,10 +182,10 @@ device Ltc2686Ll{
             },
         },
 
-        /// Write code to and update DAC channel.
+        /// Write DAC code to and update channel.
         /// 
-        /// Writes a specific code to the DAC channel and updates it, all in one command.
-        command channel_write_code_update {
+        /// Writes a specific DAC code to the channel and updates it, all in one command.
+        command write_dac_code_update {
             address: 0x40,
 
             fields-in: fieldset _ {
@@ -199,7 +202,7 @@ device Ltc2686Ll{
         /// Write code this channel and update all DAC channel.
         /// 
         /// Writes a specific code to this DAC channel and updates all DAC channels.
-        command channel_write_code_update_all {
+        command write_dac_code_update_all {
             address: 0x50,
 
             fields-in: fieldset _ {
@@ -218,7 +221,7 @@ device Ltc2686Ll{
         ///
         /// Writes the code that is stored in the DAC channel's input register
         /// into the DAC register and thus sets the output.
-        command channel_update {
+        command update {
             address: 0x60,
 
             fields-in: 
@@ -528,4 +531,70 @@ device Ltc2686Ll{
         },
     },
 
+    /// Write a DAC code to all channels.
+    /// 
+    /// Writes a specific DAC code to all channels in one command.
+    command write_dac_code_all_channels {
+        address: 0x78,
+
+        fields-in: fieldset _ {
+            size-bytes: 2,
+            bit-overlap: allow,
+
+            /// Use this field for the 16bit version of the LTC2686.
+            field code_16bit 15:0,
+            /// Use this field for the 12bit version of the LTC2686.
+            field code_12bit 15:4,
+        },
+
+    },
+
+    /// Write a DAC code to all channels and update them.
+    /// 
+    /// Writes a specific DAC code to all channels and updates them, all in one command.
+    command write_dac_code_all_channels_update {
+        address: 0x79,
+
+        fields-in: fieldset _ {
+            size-bytes: 2,
+            bit-overlap: allow,
+
+            /// Use this field for the 16bit version of the LTC2686.
+            field code_16bit 15:0,
+            /// Use this field for the 12bit version of the LTC2686.
+            field code_12bit 15:4,
+        },
+
+    },
+
+    /// Write settings to all channels.
+    ///
+    /// This command writes settings to all channels simultaneously. It is equivalent 
+    /// in its arguments to updating an individual channel via [`ChannelOp::settings`].
+    command write_settings_all_channels {
+        address: 0x7a,
+
+        fields-in: Settings,
+    },
+
+    /// Write settings to all channels and update the channels.
+    ///
+    /// This command writes settings to all channels simultaneously and then updates them. 
+    command write_settings_all_channels_update {
+        address: 0x7b,
+
+        fields-in: Settings,
+    },
+
+    /// Update all channels.
+    command update_all {
+        address: 0x7c,
+
+        fields-in: 
+            /// Empty fieldset on purpose to reserve bytes to send in the interface.
+            fieldset _ {
+                size-bytes: 2,
+
+            }
+    },
 }

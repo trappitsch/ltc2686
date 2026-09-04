@@ -55,7 +55,7 @@ async fn main() {
 
     // set the channel up in software-toggle dither mode with 32 steps per period.
     ltc.channel_op(channel)
-        .channel_settings()
+        .settings()
         .write_async(|reg| {
             reg.set_mode(ll::Mode::Dither);
             reg.set_td_select(ll::TdSelect::Software);
@@ -66,7 +66,7 @@ async fn main() {
 
     // The central voltage should be 2V.
     ltc.channel_op(channel)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(0x66_66))
         .await
         .unwrap();
@@ -87,7 +87,7 @@ async fn main() {
     let amplitude = (u16::MAX / 5) << 2;
     println!("Amplitude 1V: code 0x{amplitude:04X}");
     ltc.channel_op(channel)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(amplitude))
         .await
         .unwrap();

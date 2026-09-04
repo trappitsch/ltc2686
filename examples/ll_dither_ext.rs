@@ -60,39 +60,39 @@ async fn main() {
 
     // setup channel 0
     ltc.channel_op(Channel::Ch0)
-        .channel_settings()
+        .settings()
         .write_async(|reg| {
             reg.set_mode(ll::Mode::Dither);
             reg.set_td_select(ll::TdSelect::TgpPin2);
             reg.set_dither_period(ll::DitherPeriod::N32);
-            reg.set_span_settings(ll::SpanSettings::Sp0To5);
+            reg.set_span(ll::Span::Unip5);
         })
         .await
         .unwrap();
 
     // setup channel 1:
     ltc.channel_op(Channel::Ch1)
-        .channel_settings()
+        .settings()
         .write_async(|reg| {
             reg.set_mode(ll::Mode::Dither);
             reg.set_td_select(ll::TdSelect::TgpPin2);
             reg.set_dither_period(ll::DitherPeriod::N32);
             reg.set_dither_phase(ll::DitherPhase::P90);
-            reg.set_span_settings(ll::SpanSettings::Sp0To10);
+            reg.set_span(ll::Span::Unip10);
         })
         .await
         .unwrap();
 
     // baseline of channel 0
     ltc.channel_op(Channel::Ch0)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(0x66_66))
         .await
         .unwrap();
 
     // baseline of channel 1
     ltc.channel_op(Channel::Ch1)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(0x7F_FF))
         .await
         .unwrap();
@@ -110,7 +110,7 @@ async fn main() {
     let amplitude = (u16::MAX / 5) << 2;
     println!("Amplitude 1V: code 0x{amplitude:04X}");
     ltc.channel_op(Channel::Ch0)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(amplitude))
         .await
         .unwrap();
@@ -119,7 +119,7 @@ async fn main() {
     let amplitude = (u16::MAX / 100 * 25) << 2;
     println!("Amplitude 2.5V: code 0x{amplitude:04X}");
     ltc.channel_op(Channel::Ch1)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(amplitude))
         .await
         .unwrap();

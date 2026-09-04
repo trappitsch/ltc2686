@@ -57,26 +57,26 @@ async fn main() {
     // from here on, same as `ll_simple.rs` example
     let channel = Channel::Ch0;
     ltc.channel_op(channel)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(0xFF_FF))
         .await
         .unwrap();
 
     ltc.channel_op(channel)
-        .channel_update()
+        .update()
         .dispatch_in_async(|_| {})
         .await
         .unwrap();
 
     ltc.channel_op(channel)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(0xAA_AA))
         .await
         .unwrap();
 
     let ch0_read = ltc
         .channel_op(channel)
-        .channel_dac_code()
+        .dac_code()
         .read_async()
         .await
         .unwrap()

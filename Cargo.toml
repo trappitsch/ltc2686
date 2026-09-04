@@ -30,6 +30,14 @@ blocking = []
 defmt = ["dep:defmt", "device-driver/defmt"]
 
 [[example]]
+name = "ll_all_channels"
+required-features = ["async"]
+
+[[example]]
+name = "ll_bipolar"
+required-features = ["async"]
+
+[[example]]
 name = "ll_crc"
 required-features = ["async"]
 
@@ -52,7 +60,3 @@ required-features = ["async"]
 [[test]]
 name = "test_ll_async"
 required-features = ["async"]
-
-[[test]]
-name = "test_ll_blocking"
-required-features = ["blocking"]

@@ -1,4 +1,4 @@
-//! The async interface impl for LTC2686.
+//! The async interface for the LTC2686; available on "async" feautre (default).
 
 use device_driver::{
     AsyncCommandInterface, AsyncRegisterInterface, CommandInterfaceBase, RegisterInterfaceBase,
@@ -6,9 +6,11 @@ use device_driver::{
 use embedded_hal::{digital::OutputPin, spi::Operation};
 use embedded_hal_async::{delay::DelayNs, spi::SpiDevice};
 
-use crate::ll::{CrcCheck, InterfaceError, helpers::get_crc};
+use crate::ll::{CrcCheck, InterfaceError, crc::get_crc};
 
-/// Async hardware interface to communicate with LTC2686.
+/// Async interface to communicate with LTC2686.
+///
+/// This interface is only available with the "async" feature, which is also a default feature.
 pub struct LtcInterfaceAsync<SPI, R, D>
 where
     SPI: SpiDevice,

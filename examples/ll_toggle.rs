@@ -50,7 +50,7 @@ async fn main() {
     // Configure channel 0 settings for toggle mode with software toggle "pin".
     // Note that we leave the default span (0 - 5 V).
     ltc.channel_op(channel)
-        .channel_settings()
+        .settings()
         .write_async(|reg| {
             reg.set_mode(ll::Mode::Toggle);
             reg.set_td_select(ll::TdSelect::Software);
@@ -60,7 +60,7 @@ async fn main() {
 
     // Set input register A to 2V.
     ltc.channel_op(channel)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(0x66_66))
         .await
         .unwrap();
@@ -72,7 +72,7 @@ async fn main() {
         .unwrap();
     // Write 3V into input register B.
     ltc.channel_op(channel)
-        .channel_dac_code()
+        .dac_code()
         .write_async(|reg| reg.set_code_16_bit(0x99_99))
         .await
         .unwrap();

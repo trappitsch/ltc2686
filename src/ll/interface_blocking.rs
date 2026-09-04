@@ -1,4 +1,4 @@
-//! The blocking interface impl for LTC2686.
+//! The blocking interface for the LTC2686; available with the "blocking" feature.
 
 use device_driver::{
     CommandInterface, CommandInterfaceBase, RegisterInterface, RegisterInterfaceBase,
@@ -9,9 +9,12 @@ use embedded_hal::{
     spi::{Operation, SpiDevice},
 };
 
-use crate::ll::{CrcCheck, InterfaceError, helpers::get_crc};
+use crate::ll::{CrcCheck, InterfaceError, crc::get_crc};
 
-pub struct LtcInterface<SPI, R, D>
+/// Blocking interface to communicate with LTC2686.
+///
+/// This interface is only available with the "blocking" feature.
+pub struct LtcInterfaceBlocking<SPI, R, D>
 where
     SPI: SpiDevice,
     R: OutputPin,
@@ -27,7 +30,7 @@ where
     crc_check: CrcCheck,
 }
 
-impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> LtcInterface<SPI, R, D> {
+impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> LtcInterfaceBlocking<SPI, R, D> {
     /// Try to create a new blocking interface for the LTC2686.
     ///
     /// Arguments:
@@ -86,17 +89,23 @@ impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> LtcInterface<SPI, R, D> {
     }
 }
 
-impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> RegisterInterfaceBase for LtcInterface<SPI, R, D> {
+impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> RegisterInterfaceBase
+    for LtcInterfaceBlocking<SPI, R, D>
+{
     type Error = InterfaceError;
     type AddressType = u8;
 }
 
-impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> CommandInterfaceBase for LtcInterface<SPI, R, D> {
+impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> CommandInterfaceBase
+    for LtcInterfaceBlocking<SPI, R, D>
+{
     type Error = InterfaceError;
     type AddressType = u8;
 }
 
-impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> RegisterInterface for LtcInterface<SPI, R, D> {
+impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> RegisterInterface
+    for LtcInterfaceBlocking<SPI, R, D>
+{
     fn write_register(
         &mut self,
         address: Self::AddressType,
@@ -146,7 +155,9 @@ impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> RegisterInterface for LtcInterfac
     }
 }
 
-impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> CommandInterface for LtcInterface<SPI, R, D> {
+impl<SPI: SpiDevice, R: OutputPin, D: DelayNs> CommandInterface
+    for LtcInterfaceBlocking<SPI, R, D>
+{
     fn dispatch_command(
         &mut self,
         address: Self::AddressType,

@@ -1,4 +1,4 @@
-//! Helper routines for managing the low-level driver.
+//! Module to handle CRC calculation.
 
 use crate::ll::CrcCheck;
 
