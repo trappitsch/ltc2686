@@ -27,6 +27,7 @@ All examples are listed in order of potential interest/complexity.
 
 - `ll_simple.rs`: Starting example. Setup, reset, set/get a channel code.
 - `ll_span.rs`: Set up two channels with different voltage ranges.
+- `ll_all_channels`: Send commands to all channels at once.
 - `ll_bipolar.rs`: Addressing a channel in bipolar mode.
 - `ll_toggle.rs`: Runs the LTC2686 in (software) toggle mode.
 - `ll_dither.rs`: Runs the LTC2686 in (software) dither mode.
