@@ -19,6 +19,7 @@ mod interface_async;
 #[cfg(feature = "blocking")]
 mod interface_blocking;
 
+#[cfg(any(feature = "async", feature = "blocking"))]
 mod crc;
 
 device_driver::compile!(
